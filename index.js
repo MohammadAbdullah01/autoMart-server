@@ -3,6 +3,7 @@ const app = express()
 const port = process.env.PORT || 5000
 const cors = require('cors')
 require('dotenv').config()
+const jwt = require('jsonwebtoken');
 
 app.use(express.json())
 app.use(cors())
@@ -29,6 +30,7 @@ async function run() {
         await client.connect();
         const partsCollection = client.db("autoMart").collection("parts");
         const ordersCollection = client.db("autoMart").collection("orders");
+        const usersCollection = client.db("autoMart").collection("users");
 
         //get all parts 
         app.get('/parts', async (req, res) => {
@@ -66,10 +68,41 @@ async function run() {
             const orderComplete = await ordersCollection.insertOne(order)
             res.send(orderComplete)
         })
-        app.get('/orders', async (req, res) => {
-            const result = await ordersCollection.find({}).toArray()
+
+        //get only now users orders;
+
+        app.get('/orders/:email', async (req, res) => {
+            const email = req.params.email;
+            console.log(email);
+            const query = { email: email }
+            const result = await ordersCollection.find(query).toArray()
             res.send(result)
         })
+
+        //delte one order with id
+        app.delete('/orders/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) }
+            const result = await ordersCollection.deleteOne(query);
+            res.send(result)
+        })
+
+        //generate token and get user
+        app.put('/users/:email', async (req, res) => {
+            const email = req.params.email;
+            const filter = { user: email };
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: {
+                    user: email
+                }
+            }
+            const updateUser = await usersCollection.updateOne(filter, updateDoc, options)
+            var token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN);
+            console.log(token);
+            res.send({ accessToken: token })
+        })
+
     } finally {
         // await client.close();
     }
