@@ -129,12 +129,6 @@ async function run() {
             console.log(user, updatedUser);
             const filter = { user: user };
             const options = { upsert: true };
-            // const updateDoc = {
-            //     $set: {
-            //       plot:
-            //         "Blacksmith Scene is a silent film directed by William K.L. Dickson.",
-            //     },
-            //   };
             const updateDoc = {
                 $set: {
                     name: updatedUser.name,
@@ -145,6 +139,11 @@ async function run() {
                 }
             }
             const result = await usersCollection.updateOne(filter, updateDoc, options);
+            res.send(result)
+        })
+        app.get('/reviews', async (req, res) => {
+            const query = {}
+            const result = await reviewsCollection.find(query).toArray()
             res.send(result)
         })
 
