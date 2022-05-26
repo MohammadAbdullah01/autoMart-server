@@ -19,6 +19,8 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.gyzdq.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
+
+
 function verifyJwt(req, res, next) {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -34,6 +36,8 @@ function verifyJwt(req, res, next) {
     });
 }
 
+
+
 async function run() {
     try {
         await client.connect();
@@ -41,6 +45,29 @@ async function run() {
         const ordersCollection = client.db("autoMart").collection("orders");
         const usersCollection = client.db("autoMart").collection("users");
         const reviewsCollection = client.db("autoMart").collection("reviews");
+
+        //middleware for verifying current user admin or not
+        const checkAdmin = async (req, res, next) => {
+            const requester = req.decoded.email;
+            const requesterInfo = await usersCollection.findOne({ user: requester });
+            const isAdmin = requesterInfo?.role === "admin"
+            if (isAdmin) {
+                next()
+            }
+            else {
+                return res.send({ message: "failed" })
+            }
+        }
+
+        //return only FALSE || TRUE current user admin or not
+        app.get('/admin/:email', async (req, res) => {
+            const email = req.params.email;
+            const user = await usersCollection.findOne({ user: email })
+            const isAdmin = user.role === "admin"
+            res.send({ admin: isAdmin })
+        })
+
+
 
         //get all parts 
         app.get('/parts', async (req, res) => {
@@ -145,6 +172,34 @@ async function run() {
             const query = {}
             const result = await reviewsCollection.find(query).toArray()
             res.send(result)
+        })
+
+        //get all user
+        app.get('/users', verifyJwt, async (req, res) => {
+            const query = {}
+            const cursor = usersCollection.find(query)
+            const result = await cursor.toArray()
+            res.send(result)
+        })
+
+        //make a user admin
+        app.put('/user/admin/:user', verifyJwt, checkAdmin, async (req, res) => {
+            // const requester = req.decoded.email;
+            // const requesterInfo = await usersCollection.findOne({ user: requester })
+            // const isAdmin = requesterInfo.role === "admin"
+            // if (isAdmin) {
+            const user = req.params.user;
+            const filter = { user: user };
+            const updateDoc = {
+                $set: { role: "admin" },
+            };
+            const result = await usersCollection.updateOne(filter, updateDoc);
+            return res.send(result)
+            // }
+            // else {
+            //     res.send({ msg: "failed" })
+            // }
+
         })
 
     } finally {
