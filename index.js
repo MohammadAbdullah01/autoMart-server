@@ -202,6 +202,12 @@ async function run() {
 
         })
 
+        app.post('/parts', async (req, res) => {
+            const part = req.body;
+            const result = partsCollection.insertOne(part)
+            res.send(result)
+        })
+
     } finally {
         // await client.close();
     }
