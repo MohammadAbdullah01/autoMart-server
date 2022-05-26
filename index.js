@@ -5,7 +5,7 @@ const cors = require('cors')
 require('dotenv').config()
 const jwt = require('jsonwebtoken');
 
-const stripe = require("stripe")(process.env.STRIPE_SECRET)
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 app.use(express.json())
 app.use(cors())
@@ -45,6 +45,7 @@ async function run() {
         const ordersCollection = client.db("autoMart").collection("orders");
         const usersCollection = client.db("autoMart").collection("users");
         const reviewsCollection = client.db("autoMart").collection("reviews");
+        const paymentCollection = client.db("autoMart").collection("payments");
 
         //middleware for verifying current user admin or not
         const checkAdmin = async (req, res, next) => {
@@ -65,6 +66,35 @@ async function run() {
             const user = await usersCollection.findOne({ user: email })
             const isAdmin = user.role === "admin"
             res.send({ admin: isAdmin })
+        })
+
+        //payment system
+        app.post("/create-payment-intent", verifyJwt, async (req, res) => {
+            const { price } = req.body;
+            const amount = price * 100;
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: "usd",
+                payment_method_types: ['card']
+            })
+            res.send({ clientSecret: paymentIntent.client_secret })
+        });
+
+
+        app.patch('/booking/:id', verifyJwt, async (req, res) => {
+            const id = req.params.id;
+            const payment = req.body;
+            const filter = { _id: ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    paid: true,
+                    transactionId: payment.transactionId
+                }
+            }
+
+            const result = await paymentCollection.insertOne(payment);
+            const updatedBooking = await ordersCollection.updateOne(filter, updatedDoc);
+            res.send(updatedBooking);
         })
 
 
@@ -184,10 +214,6 @@ async function run() {
 
         //make a user admin
         app.put('/user/admin/:user', verifyJwt, checkAdmin, async (req, res) => {
-            // const requester = req.decoded.email;
-            // const requesterInfo = await usersCollection.findOne({ user: requester })
-            // const isAdmin = requesterInfo.role === "admin"
-            // if (isAdmin) {
             const user = req.params.user;
             const filter = { user: user };
             const updateDoc = {
@@ -195,10 +221,6 @@ async function run() {
             };
             const result = await usersCollection.updateOne(filter, updateDoc);
             return res.send(result)
-            // }
-            // else {
-            //     res.send({ msg: "failed" })
-            // }
 
         })
         //create one product
@@ -215,6 +237,9 @@ async function run() {
             const result = await partsCollection.deleteOne(query)
             res.send(result)
         })
+
+
+
 
     } finally {
         // await client.close();
