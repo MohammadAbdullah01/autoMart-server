@@ -88,7 +88,8 @@ async function run() {
             const updatedDoc = {
                 $set: {
                     paid: true,
-                    transactionId: payment.transactionId
+                    transactionId: payment.transactionId,
+                    status: "pending"
                 }
             }
 
@@ -130,6 +131,12 @@ async function run() {
             res.send(orderComplete)
         })
 
+        //get all orders
+        app.get('/orders', async (req, res) => {
+            const result = await ordersCollection.find().toArray()
+            res.send(result)
+        })
+
         //get only now users orders;
 
         app.get('/orders/:email', verifyJwt, async (req, res) => {
@@ -152,6 +159,27 @@ async function run() {
             const query = { _id: ObjectId(id) }
             const result = await ordersCollection.deleteOne(query);
             res.send(result)
+        })
+
+        app.put('/ship/:id', async (req, res) => {
+            const status = req.body;
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) };
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: {
+                    status: status.status
+                }
+            }
+            const updateOrders = await ordersCollection.updateOne(filter, updateDoc, options)
+            res.send({ m: "success" })
+        })
+        app.delete('/ship/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await ordersCollection.deleteOne(query)
+            res.send(result)
+
         })
 
         app.put('/users/:email', async (req, res) => {
