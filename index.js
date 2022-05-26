@@ -123,6 +123,31 @@ async function run() {
             res.send(result)
         })
 
+        app.put('/updateuser/:user', async (req, res) => {
+            const user = req.params.user;
+            const updatedUser = req.body;
+            console.log(user, updatedUser);
+            const filter = { user: user };
+            const options = { upsert: true };
+            // const updateDoc = {
+            //     $set: {
+            //       plot:
+            //         "Blacksmith Scene is a silent film directed by William K.L. Dickson.",
+            //     },
+            //   };
+            const updateDoc = {
+                $set: {
+                    name: updatedUser.name,
+                    address: updatedUser.address,
+                    phone: updatedUser.phone,
+                    linkedin: updatedUser.linkedin,
+                    education: updatedUser.education
+                }
+            }
+            const result = await usersCollection.updateOne(filter, updateDoc, options);
+            res.send(result)
+        })
+
     } finally {
         // await client.close();
     }
