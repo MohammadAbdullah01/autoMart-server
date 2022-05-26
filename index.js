@@ -201,10 +201,18 @@ async function run() {
             // }
 
         })
-
+        //create one product
         app.post('/parts', async (req, res) => {
             const part = req.body;
             const result = partsCollection.insertOne(part)
+            res.send(result)
+        })
+
+        //delete one product
+        app.delete('/parts/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await partsCollection.deleteOne(query)
             res.send(result)
         })
 
